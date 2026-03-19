@@ -1,0 +1,503 @@
+-- Sound Detector by timmy
+-- Detects all playing sounds in the game and displays their info
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+-- GUI Setup
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "SoundDetector"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 260, 0, 220)
+MainFrame.Position = UDim2.new(0.5, -130, 0.5, -110)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 8)
+MainCorner.Parent = MainFrame
+
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Color3.fromRGB(80, 120, 255)
+MainStroke.Thickness = 1.2
+MainStroke.Parent = MainFrame
+
+-- Title Bar (drag handle)
+local TitleBar = Instance.new("Frame")
+TitleBar.Name = "TitleBar"
+TitleBar.Size = UDim2.new(1, 0, 0, 28)
+TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = MainFrame
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 8)
+TitleCorner.Parent = TitleBar
+
+-- Fix bottom corners of title bar
+local TitleFix = Instance.new("Frame")
+TitleFix.Size = UDim2.new(1, 0, 0, 8)
+TitleFix.Position = UDim2.new(0, 0, 1, -8)
+TitleFix.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+TitleFix.BorderSizePixel = 0
+TitleFix.Parent = TitleBar
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Text = "🔊 Sound Detector"
+TitleLabel.Size = UDim2.new(1, -36, 1, 0)
+TitleLabel.Position = UDim2.new(0, 8, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.TextColor3 = Color3.fromRGB(180, 200, 255)
+TitleLabel.TextSize = 12
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.Parent = TitleBar
+
+-- Close Button
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Text = "✕"
+CloseBtn.Size = UDim2.new(0, 22, 0, 22)
+CloseBtn.Position = UDim2.new(1, -25, 0, 3)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextSize = 11
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.BorderSizePixel = 0
+CloseBtn.Parent = TitleBar
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 4)
+CloseCorner.Parent = CloseBtn
+
+-- Sound Count Label
+local CountLabel = Instance.new("TextLabel")
+CountLabel.Text = "Sounds: 0"
+CountLabel.Size = UDim2.new(1, -10, 0, 18)
+CountLabel.Position = UDim2.new(0, 6, 0, 30)
+CountLabel.BackgroundTransparency = 1
+CountLabel.TextColor3 = Color3.fromRGB(100, 160, 255)
+CountLabel.TextSize = 11
+CountLabel.Font = Enum.Font.Gotham
+CountLabel.TextXAlignment = Enum.TextXAlignment.Left
+CountLabel.Parent = MainFrame
+
+-- Scroll Frame for sound list
+local ScrollFrame = Instance.new("ScrollingFrame")
+ScrollFrame.Name = "SoundList"
+ScrollFrame.Size = UDim2.new(1, -8, 1, -55)
+ScrollFrame.Position = UDim2.new(0, 4, 0, 50)
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.BorderSizePixel = 0
+ScrollFrame.ScrollBarThickness = 3
+ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 120, 255)
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+ScrollFrame.Parent = MainFrame
+
+local ListLayout = Instance.new("UIListLayout")
+ListLayout.Padding = UDim.new(0, 3)
+ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ListLayout.Parent = ScrollFrame
+
+local ListPadding = Instance.new("UIPadding")
+ListPadding.PaddingTop = UDim.new(0, 2)
+ListPadding.PaddingLeft = UDim.new(0, 2)
+ListPadding.PaddingRight = UDim.new(0, 2)
+ListPadding.Parent = ScrollFrame
+
+-- Dragging logic
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+TitleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+    end
+end)
+
+TitleBar.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+-- Clipboard copy helper
+local function copyToClipboard(text)
+    if setclipboard then
+        setclipboard(text)
+        return true
+    elseif syn and syn.clipboard then
+        syn.clipboard.set(text)
+        return true
+    end
+    return false
+end
+
+-- Toast notification
+local toastActive = false
+local function showToast(msg)
+    if toastActive then return end
+    toastActive = true
+
+    local toast = Instance.new("Frame")
+    toast.Size = UDim2.new(0, 180, 0, 24)
+    toast.Position = UDim2.new(0.5, -90, 1, -30)
+    toast.BackgroundColor3 = Color3.fromRGB(40, 200, 100)
+    toast.BorderSizePixel = 0
+    toast.ZIndex = 10
+    toast.Parent = MainFrame
+
+    local toastCorner = Instance.new("UICorner")
+    toastCorner.CornerRadius = UDim.new(0, 6)
+    toastCorner.Parent = toast
+
+    local toastLabel = Instance.new("TextLabel")
+    toastLabel.Text = msg
+    toastLabel.Size = UDim2.new(1, 0, 1, 0)
+    toastLabel.BackgroundTransparency = 1
+    toastLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toastLabel.TextSize = 10
+    toastLabel.Font = Enum.Font.GothamBold
+    toastLabel.ZIndex = 11
+    toastLabel.Parent = toast
+
+    task.delay(1.5, function()
+        if toast and toast.Parent then
+            toast:Destroy()
+        end
+        toastActive = false
+    end)
+end
+
+-- Sound entry card creation
+local function createSoundEntry(sound, index)
+    local card = Instance.new("Frame")
+    card.Name = "SoundCard_" .. tostring(sound)
+    card.Size = UDim2.new(1, 0, 0, 76)
+    card.BackgroundColor3 = Color3.fromRGB(26, 26, 36)
+    card.BorderSizePixel = 0
+    card.LayoutOrder = index
+    card.Parent = ScrollFrame
+
+    local cardCorner = Instance.new("UICorner")
+    cardCorner.CornerRadius = UDim.new(0, 5)
+    cardCorner.Parent = card
+
+    local cardStroke = Instance.new("UIStroke")
+    cardStroke.Color = Color3.fromRGB(50, 70, 130)
+    cardStroke.Thickness = 0.8
+    cardStroke.Parent = card
+
+    -- Sound name
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Text = "🎵 " .. (sound.Name ~= "" and sound.Name or "(no name)")
+    nameLabel.Size = UDim2.new(1, -6, 0, 14)
+    nameLabel.Position = UDim2.new(0, 4, 0, 3)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.TextColor3 = Color3.fromRGB(220, 230, 255)
+    nameLabel.TextSize = 10
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    nameLabel.Parent = card
+
+    -- Stopped badge (hidden by default)
+    local stoppedBadge = Instance.new("TextLabel")
+    stoppedBadge.Text = "STOPPED"
+    stoppedBadge.Size = UDim2.new(0, 52, 0, 12)
+    stoppedBadge.Position = UDim2.new(1, -56, 0, 4)
+    stoppedBadge.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+    stoppedBadge.TextColor3 = Color3.fromRGB(255, 220, 220)
+    stoppedBadge.TextSize = 8
+    stoppedBadge.Font = Enum.Font.GothamBold
+    stoppedBadge.BackgroundTransparency = 1
+    stoppedBadge.Visible = false
+    stoppedBadge.Parent = card
+
+    local badgeCorner = Instance.new("UICorner")
+    badgeCorner.CornerRadius = UDim.new(0, 3)
+    badgeCorner.Parent = stoppedBadge
+
+    -- Dim card and show badge when sound stops
+    sound.Stopped:Connect(function()
+        if card and card.Parent then
+            card.BackgroundColor3 = Color3.fromRGB(20, 18, 20)
+            cardStroke.Color = Color3.fromRGB(100, 50, 50)
+            nameLabel.TextColor3 = Color3.fromRGB(140, 130, 150)
+            stoppedBadge.BackgroundTransparency = 0
+            stoppedBadge.Visible = true
+        end
+    end)
+
+    -- Sound ID
+    local idLabel = Instance.new("TextLabel")
+    idLabel.Text = "ID: " .. tostring(sound.SoundId):gsub("rbxassetid://", "")
+    idLabel.Size = UDim2.new(1, -6, 0, 12)
+    idLabel.Position = UDim2.new(0, 4, 0, 18)
+    idLabel.BackgroundTransparency = 1
+    idLabel.TextColor3 = Color3.fromRGB(100, 160, 255)
+    idLabel.TextSize = 9
+    idLabel.Font = Enum.Font.Gotham
+    idLabel.TextXAlignment = Enum.TextXAlignment.Left
+    idLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    idLabel.Parent = card
+
+    -- Volume & Pitch
+    local volPitchLabel = Instance.new("TextLabel")
+    volPitchLabel.Text = string.format("Vol: %.2f  Pitch: %.2f  Loop: %s", sound.Volume, sound.PlaybackSpeed, tostring(sound.Looped))
+    volPitchLabel.Size = UDim2.new(1, -6, 0, 12)
+    volPitchLabel.Position = UDim2.new(0, 4, 0, 31)
+    volPitchLabel.BackgroundTransparency = 1
+    volPitchLabel.TextColor3 = Color3.fromRGB(150, 200, 150)
+    volPitchLabel.TextSize = 9
+    volPitchLabel.Font = Enum.Font.Gotham
+    volPitchLabel.TextXAlignment = Enum.TextXAlignment.Left
+    volPitchLabel.Parent = card
+
+    -- Parent path
+    local pathLabel = Instance.new("TextLabel")
+    local parentName = sound.Parent and sound.Parent.Name or "?"
+    pathLabel.Text = "Parent: " .. parentName
+    pathLabel.Size = UDim2.new(1, -6, 0, 12)
+    pathLabel.Position = UDim2.new(0, 4, 0, 44)
+    pathLabel.BackgroundTransparency = 1
+    pathLabel.TextColor3 = Color3.fromRGB(180, 130, 255)
+    pathLabel.TextSize = 9
+    pathLabel.Font = Enum.Font.Gotham
+    pathLabel.TextXAlignment = Enum.TextXAlignment.Left
+    pathLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    pathLabel.Parent = card
+
+    -- Button row: [📋 Copy Info] [🔗 ID] [▶ Replay] [🗑]
+    local copyAllBtn = Instance.new("TextButton")
+    copyAllBtn.Text = "📋 Info"
+    copyAllBtn.Size = UDim2.new(0, 58, 0, 16)
+    copyAllBtn.Position = UDim2.new(0, 4, 0, 58)
+    copyAllBtn.BackgroundColor3 = Color3.fromRGB(50, 80, 180)
+    copyAllBtn.TextColor3 = Color3.fromRGB(220, 235, 255)
+    copyAllBtn.TextSize = 9
+    copyAllBtn.Font = Enum.Font.GothamBold
+    copyAllBtn.BorderSizePixel = 0
+    copyAllBtn.Parent = card
+
+    local copyAllCorner = Instance.new("UICorner")
+    copyAllCorner.CornerRadius = UDim.new(0, 4)
+    copyAllCorner.Parent = copyAllBtn
+
+    local copyIdBtn = Instance.new("TextButton")
+    copyIdBtn.Text = "🔗 ID"
+    copyIdBtn.Size = UDim2.new(0, 50, 0, 16)
+    copyIdBtn.Position = UDim2.new(0, 66, 0, 58)
+    copyIdBtn.BackgroundColor3 = Color3.fromRGB(40, 110, 60)
+    copyIdBtn.TextColor3 = Color3.fromRGB(200, 255, 210)
+    copyIdBtn.TextSize = 9
+    copyIdBtn.Font = Enum.Font.GothamBold
+    copyIdBtn.BorderSizePixel = 0
+    copyIdBtn.Parent = card
+
+    local copyIdCorner = Instance.new("UICorner")
+    copyIdCorner.CornerRadius = UDim.new(0, 4)
+    copyIdCorner.Parent = copyIdBtn
+
+    -- Replay button
+    local replayBtn = Instance.new("TextButton")
+    replayBtn.Text = "▶ Play"
+    replayBtn.Size = UDim2.new(0, 48, 0, 16)
+    replayBtn.Position = UDim2.new(0, 120, 0, 58)
+    replayBtn.BackgroundColor3 = Color3.fromRGB(180, 120, 20)
+    replayBtn.TextColor3 = Color3.fromRGB(255, 240, 200)
+    replayBtn.TextSize = 9
+    replayBtn.Font = Enum.Font.GothamBold
+    replayBtn.BorderSizePixel = 0
+    replayBtn.Parent = card
+
+    local replayCorner = Instance.new("UICorner")
+    replayCorner.CornerRadius = UDim.new(0, 4)
+    replayCorner.Parent = replayBtn
+
+    -- Remove button
+    local removeBtn = Instance.new("TextButton")
+    removeBtn.Text = "🗑"
+    removeBtn.Size = UDim2.new(0, 26, 0, 16)
+    removeBtn.Position = UDim2.new(1, -30, 0, 58)
+    removeBtn.BackgroundColor3 = Color3.fromRGB(160, 40, 40)
+    removeBtn.TextColor3 = Color3.fromRGB(255, 200, 200)
+    removeBtn.TextSize = 10
+    removeBtn.Font = Enum.Font.GothamBold
+    removeBtn.BorderSizePixel = 0
+    removeBtn.Parent = card
+
+    local removeCorner = Instance.new("UICorner")
+    removeCorner.CornerRadius = UDim.new(0, 4)
+    removeCorner.Parent = removeBtn
+
+    -- Remove button action
+    removeBtn.MouseButton1Click:Connect(function()
+        local key = tostring(sound)
+        shownSounds[key] = nil
+        card:Destroy()
+        ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, ListLayout.AbsoluteContentSize.Y + 6)
+    end)
+
+    -- Replay button action
+    replayBtn.MouseButton1Click:Connect(function()
+        local ok, err = pcall(function()
+            sound:Stop()
+            sound.TimePosition = 0
+            sound:Play()
+        end)
+        if ok then
+            -- Restore card to active look
+            card.BackgroundColor3 = Color3.fromRGB(26, 26, 36)
+            cardStroke.Color = Color3.fromRGB(50, 70, 130)
+            nameLabel.TextColor3 = Color3.fromRGB(220, 230, 255)
+            stoppedBadge.Visible = false
+            stoppedBadge.BackgroundTransparency = 1
+            -- Flash button green
+            replayBtn.BackgroundColor3 = Color3.fromRGB(30, 160, 80)
+            replayBtn.Text = "▶ Playing"
+            showToast("▶ Replaying!")
+            task.delay(1.5, function()
+                if replayBtn and replayBtn.Parent then
+                    replayBtn.BackgroundColor3 = Color3.fromRGB(180, 120, 20)
+                    replayBtn.Text = "▶ Play"
+                end
+            end)
+        else
+            showToast("✘ Cannot replay")
+        end
+    end)
+
+    -- Copy All Info action
+    copyAllBtn.MouseButton1Click:Connect(function()
+        local soundId = tostring(sound.SoundId):gsub("rbxassetid://", "")
+        local info = string.format(
+            "Name: %s\nID: %s\nVolume: %.2f\nPitch: %.2f\nLooped: %s\nTimeLength: %.2f\nParent: %s",
+            sound.Name ~= "" and sound.Name or "(no name)",
+            soundId,
+            sound.Volume,
+            sound.PlaybackSpeed,
+            tostring(sound.Looped),
+            sound.TimeLength,
+            parentName
+        )
+        local ok = copyToClipboard(info)
+        if ok then
+            showToast("✔ Info Copied!")
+            copyAllBtn.BackgroundColor3 = Color3.fromRGB(30, 160, 80)
+            copyAllBtn.Text = "✔ Copied!"
+            task.delay(1.2, function()
+                if copyAllBtn and copyAllBtn.Parent then
+                    copyAllBtn.BackgroundColor3 = Color3.fromRGB(50, 80, 180)
+                    copyAllBtn.Text = "📋 Copy Info"
+                end
+            end)
+        else
+            showToast("✘ setclipboard not found")
+        end
+    end)
+
+    -- Copy ID only action
+    copyIdBtn.MouseButton1Click:Connect(function()
+        local soundId = tostring(sound.SoundId):gsub("rbxassetid://", "")
+        local ok = copyToClipboard(soundId)
+        if ok then
+            showToast("✔ ID Copied!")
+            copyIdBtn.BackgroundColor3 = Color3.fromRGB(30, 160, 80)
+            copyIdBtn.Text = "✔ Copied!"
+            task.delay(1.2, function()
+                if copyIdBtn and copyIdBtn.Parent then
+                    copyIdBtn.BackgroundColor3 = Color3.fromRGB(40, 110, 60)
+                    copyIdBtn.Text = "🔗 Copy ID"
+                end
+            end)
+        else
+            showToast("✘ setclipboard not found")
+        end
+    end)
+
+    return card
+end
+
+-- Get all sounds recursively
+local function getAllSounds(parent, list)
+    list = list or {}
+    for _, child in ipairs(parent:GetChildren()) do
+        if child:IsA("Sound") then
+            list[#list + 1] = child
+        end
+        getAllSounds(child, list)
+    end
+    return list
+end
+
+-- Track shown sounds (key = tostring(sound), value = true)
+local shownSounds = {}
+local totalDetected = 0
+
+-- Update loop
+local function updateSounds()
+    local allSounds = getAllSounds(workspace)
+
+    -- Also scan SoundService
+    for _, s in ipairs(game:GetService("SoundService"):GetChildren()) do
+        if s:IsA("Sound") then
+            allSounds[#allSounds + 1] = s
+        end
+    end
+
+    -- Only add NEW playing sounds; never remove cards automatically
+    for _, sound in ipairs(allSounds) do
+        if sound.IsPlaying then
+            local key = tostring(sound)
+            if not shownSounds[key] then
+                shownSounds[key] = true
+                totalDetected = totalDetected + 1
+                createSoundEntry(sound, totalDetected)
+            end
+        end
+    end
+
+    -- Update count and canvas
+    local cardCount = #ScrollFrame:GetChildren() - 2 -- subtract UIListLayout + UIPadding
+    if cardCount < 0 then cardCount = 0 end
+    CountLabel.Text = "Detected: " .. cardCount
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, ListLayout.AbsoluteContentSize.Y + 6)
+end
+
+-- Run every 0.5s
+local timer = 0
+RunService.Heartbeat:Connect(function(dt)
+    timer = timer + dt
+    if timer >= 0.5 then
+        timer = 0
+        pcall(updateSounds)
+    end
+end)
